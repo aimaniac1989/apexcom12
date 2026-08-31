@@ -22,6 +22,14 @@ measured in this repo rather than guessed:
 4.  **The action must stay smooth.** `env/sim.py` clips to +-10, and a controller railed against
     that clip is maximally sensitive to perturbation. The smoothness penalty targets that
     directly; it is cheap insurance against inheriting a bang-bang gait.
+
+5.  **Falling must cost something, and progress must be paid as a FRACTION.** Both learned from an
+    11.2M-step PPO run that reached raw 0.0519 with `fin 0/200` -- not one completion in 200
+    episodes, every event dying at 13-16 m of route. Two causes, both in this file: `fell` had no
+    terminal penalty at all (so under autoreset the same metres were simply re-earned, leaving the
+    linear progress term indifferent to falling), and progress was paid per METRE against a scorer
+    that pays per route fraction (so the 400 m was shaped 28x harder than the high jump for events
+    `meet_score` weights equally). See `r_fell` and `w_progress` below.
 """
 
 from __future__ import annotations
@@ -38,13 +46,31 @@ JUMP_EVENTS = frozenset({"long_jump", "triple_jump"})
 FOUL_REASONS = frozenset({"jump_foul", "high_foul", "out_of_bounds", "physics_glitch",
                           "invalid_action"})
 SUCCESS_REASONS = frozenset({"completed", "cleared", "landed"})
+# `fell` is the fourth outcome, and the original version of this file paid it NOTHING terminal.
+# Measured consequence over an 11.2M-step run: `fin 0/200` throughout, with every event dying at
+# 13-16 m of route. Under autoreset a fall costs only the episode, and the same metres are simply
+# re-earned after the reset, so a linear progress term is INDIFFERENT to falling -- there was no
+# gradient anywhere in this function pushing the policy to stay up past the point it fell.
+# `timeout` stays unpenalised deliberately: the scorer keeps `0.24 * progress` for it, and
+# punishing it too is what turns "stop at the board" into the local optimum (note 3 above).
+FALL_REASONS = frozenset({"fell"})
 
 
 @dataclass
 class RewardConfig:
-    w_progress: float = 12.0      # per metre of route distance gained
-    w_alive: float = 0.03         # per surviving step; keeps early training from suiciding
-    w_upright: float = 0.35       # per step, on (xmat22 - UPRIGHT_MIN); the flight-attitude term
+    # Per unit of ROUTE FRACTION gained, not per metre. `instance_score` pays progress as a
+    # fraction and `meet_score` weights the six events equally, but a per-metre term paid a full
+    # sprint_400 route 4,800 against a full high_jump route's 168 -- a 28:1 shaping skew across
+    # events the scorer treats 1:1. 1200 is chosen to leave sprint_100 (a ~102 m route at the old
+    # 12.0/m) on exactly the scale every other weight in this dataclass was tuned against, so this
+    # re-weights the events without rescaling the function.
+    w_progress: float = 1200.0
+    # Both were cut, because adding r_fell below is what makes standing still a candidate: these
+    # are per-step but the step caps run 900 (high jump) to 3600 (400 m), so "stay upright and do
+    # nothing" paid 4x more on the 400 m than on the jumps, for identical zero progress. At the old
+    # 0.03/0.35 a 400 m timeout banked 864 -- more than 70% of that route's entire progress budget.
+    w_alive: float = 0.01         # per surviving step; keeps early training from suiciding
+    w_upright: float = 0.20       # per step, on (xmat22 - UPRIGHT_MIN); the flight-attitude term
     w_smooth: float = 0.004       # per step, on ||a - a_prev||^2
     w_effort: float = 0.0008      # per step, on ||a||^2
     w_lateral: float = 0.25       # per step, on cross-track error^2 (out_of_bounds is a zero)
@@ -53,7 +79,18 @@ class RewardConfig:
     w_clearance: float = 8.0      # per metre of new best high-jump clearance
     w_hurdle: float = 10.0        # per hurdle passed without contact
     r_success: float = 120.0      # terminal, on completed / cleared / landed
-    r_foul: float = -40.0         # terminal, on a hard-zero reason
+    # Terminal, on `fell`. The missing term: without it a fall is free (it even PAID, via w_score
+    # on the progress already banked) and nothing opposed the progress term's push to accelerate
+    # until the gait broke. Sized against the alternative failure it creates -- a 100 m fall at
+    # 15% route still nets ~0.8/step against ~0.13/step for standing still, so moving stays
+    # strictly better than balking. NOTE this is weak on the 400 m specifically, where 10 m of
+    # route is worth so little that no fall penalty can beat standing; that event needs a
+    # curriculum, not a coefficient.
+    r_fell: float = -60.0
+    # Was -40, against a progress term paying hundreds. A foul that bought a few metres was net
+    # positive, and the 11.2M-step run showed it: fouls climbing 2-9 -> 23-28 per 200 episodes
+    # over the last ~30 updates while high_jump fell 0.0403 -> 0.0163.
+    r_foul: float = -150.0        # terminal, on a hard-zero reason
     w_score: float = 200.0        # terminal, on the REAL instance score, so shaping cannot
                                   # drift away from what actually wins the round
 
@@ -63,7 +100,7 @@ class EpisodeTracker:
     """Per-episode bookkeeping for terms that are deltas rather than levels."""
 
     cfg: RewardConfig = field(default_factory=RewardConfig)
-    prev_distance: float = 0.0
+    prev_progress: float = 0.0
     prev_action: np.ndarray | None = None
     prev_phase: int = 0
     prev_clearance: float = 0.0
@@ -71,7 +108,7 @@ class EpisodeTracker:
     hurdles_passed: int = 0
 
     def reset(self, sim) -> None:
-        self.prev_distance = float(sim.distance_m)
+        self.prev_progress = float(sim.progress)
         self.prev_action = None
         self.prev_phase = 0
         self.prev_clearance = 0.0
@@ -87,9 +124,11 @@ class EpisodeTracker:
         r = 0.0
 
         # -- progress along the event's own route ------------------------------------------
-        distance = float(sim.distance_m)
-        r += c.w_progress * (distance - self.prev_distance)
-        self.prev_distance = distance
+        # `sim.progress` is the SAME clipped route fraction `instance_score` consumes, and it is
+        # monotone (max_x / accumulated _circle_distance), so the delta is never negative.
+        progress = float(sim.progress)
+        r += c.w_progress * (progress - self.prev_progress)
+        self.prev_progress = progress
 
         # -- posture: paid EVERY step, including airborne ones ------------------------------
         upright = float(sim.data.xmat[sim._pelvis].reshape(3, 3)[2, 2])
@@ -134,6 +173,8 @@ class EpisodeTracker:
         if reason is not None:
             if reason in FOUL_REASONS:
                 r += c.r_foul
+            elif reason in FALL_REASONS:
+                r += c.r_fell
             elif reason in SUCCESS_REASONS:
                 r += c.r_success
             # Anchor the shaping to the real objective: whatever the dense terms encourage, the
