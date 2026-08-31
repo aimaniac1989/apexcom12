@@ -29,6 +29,7 @@ Design notes that are specific to this problem rather than boilerplate:
 from __future__ import annotations
 
 import argparse
+import collections
 import pathlib
 import time
 
@@ -76,19 +77,39 @@ def _build(IN_DIM, H_DIM):
     return Critic, gae
 
 
-def _report(update, total_steps, t_start, b_rew, stats, anchor_w, log_std, recent, args,
-            out, policy) -> None:
+def _report(update, total_steps, steps_at_start, t_start, b_rew, stats, anchor_w, log_std,
+            recent, args, out, policy) -> None:
+    """One line of optimiser health, one of what the robot actually did.
+
+    `fin` is a lagging indicator and will read 0 for a long time: no event completes on
+    stability alone. sprint_100 needs a sustained 4.25 m/s over its 102 m in the 24 s cap,
+    sprint_400 5.56 m/s, and the jumps need a jump. What moves first is route FRACTION -- which
+    is also what `instance_score` pays on for five of the six events -- so `prog` is the number
+    to watch, and the reason histogram says what is ending the episodes.
+    """
     import torch
 
     k = max(1, stats["n"])
-    rate = total_steps / max(1e-9, time.monotonic() - t_start)
+    # Steps SINCE THIS PROCESS STARTED. `total_steps` is restored by --resume, and dividing the
+    # cumulative count by this run's elapsed time reported ~3.6M/s on the first update after a
+    # resume, decaying hyperbolically toward the truth.
+    rate = (total_steps - steps_at_start) / max(1e-9, time.monotonic() - t_start)
     finished = sum(1 for i in recent if i.get("reason") in {"completed", "cleared", "landed"})
     fouls = sum(1 for i in recent if i.get("reason") in
                 {"jump_foul", "high_foul", "out_of_bounds", "physics_glitch"})
     print(f"upd {update:4d}  steps {total_steps:9,}  {rate:6.0f}/s  "
           f"rew {b_rew.sum(0).mean():8.2f}  pi {stats['pi']/k:+.4f}  v {stats['v']/k:8.3f}  "
-          f"kl {stats['kl']/k:+.4f}  bc_w {anchor_w:.3f}  std {log_std.exp().mean():.3f}  "
-          f"fin {finished}/{len(recent)} foul {fouls}", flush=True)
+          f"kl {stats['kl']/k:+.4f}  bc_w {anchor_w:.3f}  std {log_std.exp().mean():.3f}",
+          flush=True)
+    if recent:
+        n = len(recent)
+        # `score` is sim.progress, the clipped route fraction instance_score consumes.
+        prog = sum(float(i.get("score", 0.0)) for i in recent) / n
+        dist = sum(float(i.get("distance_m", 0.0)) for i in recent) / n
+        reasons = collections.Counter(i.get("reason", "?") for i in recent)
+        hist = "  ".join(f"{r} {c}" for r, c in reasons.most_common())
+        print(f"        eps {n:3d}  prog {prog:.3f}  dist {dist:6.1f} m  "
+              f"fin {finished}  foul {fouls}  | {hist}", flush=True)
 
 
 def _checkpoint(update, args, out, policy, critic, opt, log_std, total_steps, best) -> None:
@@ -199,6 +220,10 @@ def train(args) -> None:
             log_std.copy_(ck["log_std"])
         total_steps, best = ck.get("total_steps", 0), ck.get("best", -1.0)
         print(f"resumed {resume_path} at {total_steps:,} steps (best {best:.5f})")
+    # After the resume, so throughput and the final wall-clock measure THIS run, not a total
+    # that a restored step count would inflate.
+    steps_at_start = total_steps
+    t_start = time.monotonic()
 
     for update in range(args.updates):
         b_obs = torch.zeros(T, N, OBS_DIM)
@@ -298,8 +323,8 @@ def train(args) -> None:
                     if approx_kl > args.target_kl:
                         stop = True
                         break
-            _report(update, total_steps, t_start, b_rew, stats, anchor_w, log_std,
-                    recent, args, out, policy)
+            _report(update, total_steps, steps_at_start, t_start, b_rew, stats, anchor_w,
+                    log_std, recent, args, out, policy)
             best = _maybe_eval(update, args, policy, out, best)
             _checkpoint(update, args, out, policy, critic, opt, log_std, total_steps, best)
             continue
@@ -366,8 +391,8 @@ def train(args) -> None:
                     break
 
         # Sequential-BPTT path shares the reporting, eval and checkpointing of the flat one.
-        _report(update, total_steps, t_start, b_rew, stats, anchor_w, log_std,
-                recent, args, out, policy)
+        _report(update, total_steps, steps_at_start, t_start, b_rew, stats, anchor_w,
+                log_std, recent, args, out, policy)
         best = _maybe_eval(update, args, policy, out, best)
         _checkpoint(update, args, out, policy, critic, opt, log_std, total_steps, best)
 
