@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300">
+  <rect width="720" height="300" rx="20" fill="#152131"/>
+  <text x="38" y="57" fill="#f7fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="700">Long jump</text>
+  <text x="38" y="88" fill="#aebdcd" font-family="system-ui,sans-serif" font-size="20">15 m runway, 6 m void, then sand landing</text>
+  <rect x="38" y="157" width="263" height="64" rx="5" fill="#8a929b"/><rect x="424" y="157" width="258" height="64" rx="5" fill="#c7a55c"/>
+  <circle cx="63" cy="189" r="13" fill="#57d49a"/><path d="M84 180h133v-13l25 22-25 22v-13H84z" fill="#57d49a"/>
+  <path d="M301 146v86" stroke="#f7fafc" stroke-width="7"/>
+  <text x="200" y="270" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">takeoff @ 15 m</text><text x="475" y="270" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">land from 21 m</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300">
+  <rect width="720" height="300" rx="20" fill="#152131"/>
+  <text x="38" y="57" fill="#f7fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="700">100 m hurdles</text>
+  <text x="38" y="88" fill="#aebdcd" font-family="system-ui,sans-serif" font-size="20">Ten barriers, rising from 0.55 m to 1.15 m</text>
+  <rect x="38" y="138" width="644" height="64" rx="5" fill="#8a929b"/>
+  <circle cx="62" cy="170" r="13" fill="#57d49a"/><path d="M83 161h26v-13l25 22-25 22v-13H83z" fill="#57d49a"/>
+  <g fill="#d9465f"><rect x="120" y="170" width="7" height="45"/><rect x="180" y="163" width="7" height="52"/><rect x="240" y="156" width="7" height="59"/><rect x="300" y="149" width="7" height="66"/><rect x="360" y="142" width="7" height="73"/><rect x="420" y="135" width="7" height="80"/><rect x="480" y="128" width="7" height="87"/><rect x="540" y="121" width="7" height="94"/><rect x="600" y="107" width="7" height="108"/><rect x="675" y="100" width="7" height="115"/></g>
+  <text x="38" y="252" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">0.55 m → 1.15 m</text>
+</svg>

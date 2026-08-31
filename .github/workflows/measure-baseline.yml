@@ -1,0 +1,180 @@
+# Measure baseline_raw_score on a NATIVE amd64 runner, inside the real referee image.
+#
+# This exists because the number cannot be measured correctly anywhere else. Published images are
+# amd64-only; on an arm64 dev machine Docker runs them under qemu, where MuJoCo is slow enough to
+# be unusable (a 24-instance suite did not finish in 15 hours). And a host-side measurement is not
+# a substitute: host and image disagree by ~0.08%, against a 1% takeover margin.
+#
+# v0.1 repeats its four balanced condition strata across round seeds. The 20-seed check confirms
+# that the fixed absolute score remains stable in the actual runtime, alongside two deliberately
+# weaker references.
+# The resulting mean, variance, ordering, resource, and wall-time evidence is recorded in HANDOFF.
+name: measure-baseline
+
+# Dispatch-only as of 0.2.0. This measured `baseline_raw_score`, which is now 0.0 by choice, so
+# nothing in a release depends on it and no tag should start an hour of compute. Kept because the
+# resource and wall-time evidence it produces is still the only trustworthy source for the
+# `resources` and `timeout_s` blocks -- host-side numbers disagree with the image by ~0.08%.
+on:
+  workflow_dispatch:
+    inputs:
+      instances_per_event:
+        description: "Attempts of each Olympic discipline"
+        default: "4"
+      seed_start:
+        description: "First round seed; each following integer defines one fresh round"
+        default: "1"
+      seed_count:
+        description: "Number of independent full meets to measure"
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the images under test
+        run: |
+          docker build -q -f referee/Dockerfile -t olympics-referee .
+          docker build -q -f player/Dockerfile  -t olympics-player  .
+
+      - name: Make two materially different conforming reference policies
+        run: |
+          python -m pip install --quiet onnxruntime==1.28.0 numpy==2.3.4 mujoco==3.11.0 onnx \
+            torch --extra-index-url https://download.pytorch.org/whl/cpu
+          PYTHONPATH=. python tools/make_test_policy.py --zero --out /tmp/reference-static.onnx
+          PYTHONPATH=. python tools/make_test_policy.py --seed 1176 --out /tmp/reference-random.onnx
+
+      - name: Run 20 full meets for every reference and record resource use
+        run: |
+          set -euo pipefail
+          seed_start='${{ inputs.seed_start || 1 }}'
+          seed_count='${{ inputs.seed_count || 20 }}'
+          instances_per_event='${{ inputs.instances_per_event || 4 }}'
+          test "$seed_count" -ge 20
+          test "$instances_per_event" -eq 4
+          docker network create olympics-net
+          trap 'docker ps -aq --filter "name=^olympics-" | xargs -r docker rm -f >/dev/null 2>&1 || true; docker network rm olympics-net >/dev/null 2>&1 || true' EXIT
+          # The referee runs as uid 1000 and writes result.json into this bind mount, hence
+          # the intentionally world-writable directory on the Linux runner.
+          mkdir -p "$PWD/data/results" && chmod 777 "$PWD/data" "$PWD/data/results"
+          : > data/docker-memory.txt
+          run_suite() {
+            label="$1"
+            artifact="$2"
+            player="olympics-player-$label"
+            mkdir -p "data/results/$label"
+            docker run -d --name "$player" --network olympics-net --cpus 2 --memory 2048m \
+              -v "$artifact:/app/submission.onnx:ro" olympics-player >/dev/null
+            for offset in $(seq 0 $((seed_count - 1))); do
+              seed=$((seed_start + offset))
+              name="olympics-referee-$label-$seed"
+              rm -f data/result.json
+              docker run -d --name "$name" --network olympics-net --cpus 2 --memory 2048m \
+                -v "$PWD/data:/data" -e MATCH_ID="measure-$label-$seed" -e SEED="$seed" \
+                -e NUM_PLAYERS=1 -e PLAYER_URLS="http://$player:8000" \
+                -e CONFIG_JSON="{\"seed\":$seed,\"instances_per_event\":4,\"deadline_ms\":500,\"wind_max_ms\":8,\"record_history\":true,\"history_stride\":2}" \
+                olympics-referee >/dev/null
+              while [ "$(docker inspect -f '{{.State.Running}}' "$name")" = true ]; do
+                docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' "$player" "$name" \
+                  >> data/docker-memory.txt || true
+                sleep 1
+              done
+              rc=$(docker wait "$name")
+              docker logs "$name"
+              docker rm "$name" >/dev/null
+              test "$rc" -eq 0
+              mv data/result.json "data/results/$label/seed-$seed.json"
+            done
+            docker rm -f "$player" >/dev/null
+          }
+          run_suite baseline "$PWD/baseline/baseline.onnx"
+          run_suite static /tmp/reference-static.onnx
+          run_suite random /tmp/reference-random.onnx
+
+      - name: Report
+        run: |
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, math, pathlib, re, statistics
+
+          policies = {}
+          for label in ('baseline', 'static', 'random'):
+              records = [json.loads(path.read_text())
+                         for path in sorted((pathlib.Path('data/results') / label).glob('seed-*.json'))]
+              assert len(records) >= 20, f'{label}: expected >=20 runs, got {len(records)}'
+              policies[label] = records
+          baseline = policies['baseline']
+          scores = [float(record['raw_scores'][0]) for record in baseline]
+          assert min(scores) > 0, scores
+          means = {event: statistics.fmean(record['metadata']['event_scores'][event] for record in baseline)
+                   for event in baseline[0]['metadata']['event_scores']}
+          stdev = statistics.stdev(scores)
+          mean = statistics.fmean(scores)
+          times = [float(record['metadata']['eval_time_in_seconds']) for record in baseline]
+          reference_scores = {
+              label: [float(record['raw_scores'][0]) for record in records]
+              for label, records in policies.items()
+          }
+          reference_means = {label: statistics.fmean(values) for label, values in reference_scores.items()}
+          reference_ordering = [label for label, _ in sorted(reference_means.items(),
+                                                              key=lambda item: item[1], reverse=True)]
+          memory = []
+          for line in pathlib.Path('data/docker-memory.txt').read_text().splitlines():
+              match = re.search(r' (\d+(?:\.\d+)?)([KMG]iB) /', line)
+              if match:
+                  value, unit = float(match.group(1)), match.group(2)
+                  memory.append(value * {'KiB': 1 / 1024, 'MiB': 1, 'GiB': 1024}[unit])
+          report = {
+              'architecture': 'native amd64 GitHub ubuntu-latest runner',
+              'seed_start': ${{ inputs.seed_start || 1 }},
+              'seed_count': len(records),
+              'instances_per_event': ${{ inputs.instances_per_event || 4 }},
+              'raw_scores': scores,
+              'mean_raw_score': mean,
+              'sample_stdev_raw_score': stdev,
+              'takeover_margin_at_mean': mean * 0.01,
+              'quarter_margin': mean * 0.0025,
+              'variance_gate_passed': stdev <= mean * 0.0025,
+              'event_mean_scores': means,
+              'wall_time_seconds': {'mean': statistics.fmean(times), 'max': max(times)},
+              'peak_container_memory_mib': max(memory, default=0.0),
+              'reference_mean_scores': reference_means,
+              'reference_ordering': reference_ordering,
+              'baseline_beats_both_weaker_references_every_seed': all(
+                  reference_scores['baseline'][index] > reference_scores['static'][index]
+                  and reference_scores['baseline'][index] > reference_scores['random'][index]
+                  for index in range(len(scores))),
+          }
+          pathlib.Path('data/calibration-summary.json').write_text(json.dumps(report, indent=2) + '\\n')
+          print('### baseline on native amd64 (20 full seeds)\n')
+          print('```yaml')
+          for key in ('mean_raw_score', 'sample_stdev_raw_score', 'takeover_margin_at_mean',
+                      'quarter_margin', 'variance_gate_passed', 'event_mean_scores',
+                      'wall_time_seconds', 'peak_container_memory_mib', 'reference_mean_scores',
+                      'reference_ordering', 'baseline_beats_both_weaker_references_every_seed'):
+              print(f'{key}: {report[key]}')
+          print('```\n')
+          print(f"- baseline raw scores: `{scores}`")
+          print('- full per-seed data and parsed summary are uploaded as workflow artifacts.')
+          PY
+
+      - name: Upload calibration evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-calibration-native-amd64
+          path: data/
+
+      - name: Inference latency at the size cap, on this CPU
+        run: |
+          python -m pip install --quiet onnxruntime==1.28.0 numpy==2.3.4 mujoco==3.11.0 onnx \
+            torch --extra-index-url https://download.pytorch.org/whl/cpu
+          # The 15 MB cap is only defensible if a model that big still fits the referee's time
+          # budget on the hardware the platform runs, not on a dev laptop. Fails loudly if not.
+          PYTHONPATH=. python tools/latency_probe.py --instances 24 --max-steps 2650 --cap-mb 15 | tee /tmp/latency.txt
+          { echo '### inference latency on this runner'; echo '```'; cat /tmp/latency.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          grep -q "NOT compute-bound" /tmp/latency.txt

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300">
+  <rect width="720" height="300" rx="20" fill="#152131"/>
+  <text x="38" y="57" fill="#f7fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="700">400 m circular sprint</text>
+  <text x="38" y="88" fill="#aebdcd" font-family="system-ui,sans-serif" font-size="20">A true 400 m lap: route following and cornering</text>
+  <circle cx="360" cy="181" r="79" fill="none" stroke="#8a929b" stroke-width="34"/>
+  <circle cx="439" cy="181" r="13" fill="#57d49a"/><path d="M425 167v-43h-13l22-25 22 25h-13v43z" fill="#57d49a"/>
+  <path d="M439 164v34" stroke="#f7fafc" stroke-width="6"/>
+  <text x="275" y="276" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">R ≈ 63.66 m</text>
+</svg>

@@ -1,0 +1,8 @@
+{
+  "seed": 1,
+  "instances_per_event": 4,
+  "deadline_ms": 500,
+  "wind_max_ms": 8,
+  "record_history": true,
+  "history_stride": 2
+}

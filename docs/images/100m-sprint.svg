@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300">
+  <rect width="720" height="300" rx="20" fill="#152131"/>
+  <text x="38" y="57" fill="#f7fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="700">100 m sprint</text>
+  <text x="38" y="88" fill="#aebdcd" font-family="system-ui,sans-serif" font-size="20">Straight-line acceleration and top speed</text>
+  <rect x="38" y="138" width="644" height="64" rx="5" fill="#8a929b"/>
+  <circle cx="64" cy="170" r="13" fill="#57d49a"/><path d="M85 161h44v-13l25 22-25 22v-13H85z" fill="#57d49a"/>
+  <path d="M678 128v84" stroke="#f7fafc" stroke-width="7"/>
+  <text x="38" y="252" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">START</text>
+  <text x="575" y="252" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">100 m</text>
+</svg>

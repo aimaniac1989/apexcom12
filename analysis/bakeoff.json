@@ -1,0 +1,132 @@
+{
+ "baseline": {
+  "artifact": "D:\\WSL\\apex\\competetion012\\baseline\\baseline.onnx",
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "raw_mean": 0.032501,
+  "raw_sd": 0.000199,
+  "raw_sem": 0.000115,
+  "per_seed": [
+   0.032692,
+   0.032517,
+   0.032295
+  ],
+  "event_means": {
+   "sprint_100": 0.039625,
+   "sprint_400": 0.001961,
+   "hurdles_100": 0.032203,
+   "high_jump": 0.0,
+   "long_jump": 0.121218,
+   "triple_jump": 0.0
+  },
+  "reasons": {
+   "timeout": 35,
+   "hurdle_hit": 12,
+   "jump_foul": 12,
+   "fell": 9,
+   "out_of_bounds": 3,
+   "bar_hit": 1
+  },
+  "wall_time_s": 76.7
+ },
+ "riv_0825": {
+  "artifact": "D:\\WSL\\apex\\competetion012\\original\\code_submission_0825.onnx",
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "raw_mean": 0.425447,
+  "raw_sd": 0.013721,
+  "raw_sem": 0.007922,
+  "per_seed": [
+   0.433486,
+   0.409604,
+   0.433252
+  ],
+  "event_means": {
+   "sprint_100": 0.665312,
+   "sprint_400": 0.635955,
+   "hurdles_100": 0.740987,
+   "high_jump": 0.176957,
+   "long_jump": 0.180878,
+   "triple_jump": 0.152594
+  },
+  "reasons": {
+   "completed": 35,
+   "fell": 24,
+   "bar_missed": 12,
+   "hurdle_hit": 1
+  },
+  "wall_time_s": 50.6
+ },
+ "riv_0825_1": {
+  "artifact": "D:\\WSL\\apex\\competetion012\\original\\code_submission_0825_1.onnx",
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "raw_mean": 0.43624,
+  "raw_sd": 0.045357,
+  "raw_sem": 0.026187,
+  "per_seed": [
+   0.45638,
+   0.384301,
+   0.468039
+  ],
+  "event_means": {
+   "sprint_100": 0.664531,
+   "sprint_400": 0.65598,
+   "hurdles_100": 0.594247,
+   "high_jump": 0.125012,
+   "long_jump": 0.425801,
+   "triple_jump": 0.151868
+  },
+  "reasons": {
+   "completed": 31,
+   "fell": 13,
+   "bar_missed": 10,
+   "landed": 10,
+   "hurdle_hit": 4,
+   "jump_foul": 2,
+   "bar_hit": 2
+  },
+  "wall_time_s": 47.0
+ },
+ "riv_0830": {
+  "artifact": "D:\\WSL\\apex\\competetion012\\original\\code_submission_0830.onnx",
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "raw_mean": 0.612601,
+  "raw_sd": 0.024841,
+  "raw_sem": 0.014342,
+  "per_seed": [
+   0.615365,
+   0.586493,
+   0.635944
+  ],
+  "event_means": {
+   "sprint_100": 0.61494,
+   "sprint_400": 0.65375,
+   "hurdles_100": 0.686049,
+   "high_jump": 0.625,
+   "long_jump": 0.941442,
+   "triple_jump": 0.154423
+  },
+  "reasons": {
+   "completed": 33,
+   "fell": 13,
+   "cleared": 12,
+   "landed": 12,
+   "hurdle_hit": 2
+  },
+  "wall_time_s": 51.2
+ }
+}

@@ -1,0 +1,538 @@
+{
+ "artifact": "D:\\WSL\\apex\\competetion012\\baseline\\baseline.onnx",
+ "instances_per_event": 4,
+ "n": 24,
+ "seed": 3,
+ "raw_score": 0.032295,
+ "event_scores": {
+  "sprint_100": 0.039273,
+  "sprint_400": 0.001576,
+  "hurdles_100": 0.032211,
+  "high_jump": 0.0,
+  "long_jump": 0.120708,
+  "triple_jump": 0.0
+ },
+ "num_finished": 0,
+ "reasons": {
+  "fell": 3,
+  "hurdle_hit": 4,
+  "jump_foul": 4,
+  "out_of_bounds": 1,
+  "timeout": 12
+ },
+ "wall_time_s": 25.0,
+ "instances": [
+  {
+   "task": 0,
+   "event": "sprint_100",
+   "attempt": 0,
+   "friction_level": 0.2016,
+   "wind_speed_ms": 2.61,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.1719,
+   "distance_m": 17.53,
+   "steps": 1200,
+   "max_steps": 1200,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.041247
+  },
+  {
+   "task": 1,
+   "event": "sprint_100",
+   "attempt": 1,
+   "friction_level": 0.4516,
+   "wind_speed_ms": 4.61,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.1743,
+   "distance_m": 17.78,
+   "steps": 1200,
+   "max_steps": 1200,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.041828
+  },
+  {
+   "task": 2,
+   "event": "sprint_100",
+   "attempt": 2,
+   "friction_level": 0.7016,
+   "wind_speed_ms": 6.61,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.1361,
+   "distance_m": 13.88,
+   "steps": 1200,
+   "max_steps": 1200,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.032656
+  },
+  {
+   "task": 3,
+   "event": "sprint_100",
+   "attempt": 3,
+   "friction_level": 0.9516,
+   "wind_speed_ms": 0.61,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.1723,
+   "distance_m": 17.58,
+   "steps": 1200,
+   "max_steps": 1200,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.041363
+  },
+  {
+   "task": 4,
+   "event": "sprint_400",
+   "attempt": 0,
+   "friction_level": 0.1986,
+   "wind_speed_ms": 2.59,
+   "challenge": {},
+   "terminal_reason": "fell",
+   "progress": 0.018,
+   "distance_m": 7.19,
+   "steps": 487,
+   "max_steps": 3600,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.004316
+  },
+  {
+   "task": 5,
+   "event": "sprint_400",
+   "attempt": 1,
+   "friction_level": 0.4486,
+   "wind_speed_ms": 4.59,
+   "challenge": {},
+   "terminal_reason": "fell",
+   "progress": 0.0064,
+   "distance_m": 2.57,
+   "steps": 300,
+   "max_steps": 3600,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.001543
+  },
+  {
+   "task": 6,
+   "event": "sprint_400",
+   "attempt": 2,
+   "friction_level": 0.6986,
+   "wind_speed_ms": 6.59,
+   "challenge": {},
+   "terminal_reason": "out_of_bounds",
+   "progress": 0.0022,
+   "distance_m": 0.89,
+   "steps": 132,
+   "max_steps": 3600,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 7,
+   "event": "sprint_400",
+   "attempt": 3,
+   "friction_level": 0.9486,
+   "wind_speed_ms": 0.59,
+   "challenge": {},
+   "terminal_reason": "fell",
+   "progress": 0.0018,
+   "distance_m": 0.74,
+   "steps": 97,
+   "max_steps": 3600,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.000444
+  },
+  {
+   "task": 8,
+   "event": "hurdles_100",
+   "attempt": 0,
+   "friction_level": 0.0204,
+   "wind_speed_ms": 1.16,
+   "challenge": {},
+   "terminal_reason": "hurdle_hit",
+   "progress": 0.1344,
+   "distance_m": 13.7,
+   "steps": 949,
+   "max_steps": 1900,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.032246
+  },
+  {
+   "task": 9,
+   "event": "hurdles_100",
+   "attempt": 1,
+   "friction_level": 0.2704,
+   "wind_speed_ms": 3.16,
+   "challenge": {},
+   "terminal_reason": "hurdle_hit",
+   "progress": 0.1344,
+   "distance_m": 13.7,
+   "steps": 914,
+   "max_steps": 1900,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.032247
+  },
+  {
+   "task": 10,
+   "event": "hurdles_100",
+   "attempt": 2,
+   "friction_level": 0.5204,
+   "wind_speed_ms": 5.16,
+   "challenge": {},
+   "terminal_reason": "hurdle_hit",
+   "progress": 0.1339,
+   "distance_m": 13.66,
+   "steps": 921,
+   "max_steps": 1900,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.032131
+  },
+  {
+   "task": 11,
+   "event": "hurdles_100",
+   "attempt": 3,
+   "friction_level": 0.7704,
+   "wind_speed_ms": 7.16,
+   "challenge": {},
+   "terminal_reason": "hurdle_hit",
+   "progress": 0.1342,
+   "distance_m": 13.69,
+   "steps": 1036,
+   "max_steps": 1900,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.032219
+  },
+  {
+   "task": 12,
+   "event": "high_jump",
+   "attempt": 0,
+   "friction_level": 0.1607,
+   "wind_speed_ms": 2.29,
+   "challenge": {
+    "bar_height_m": 1.0
+   },
+   "terminal_reason": "timeout",
+   "progress": 0.9482,
+   "distance_m": 13.28,
+   "steps": 900,
+   "max_steps": 900,
+   "metrics": {
+    "bar_height_m": 1.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 13,
+   "event": "high_jump",
+   "attempt": 1,
+   "friction_level": 0.4107,
+   "wind_speed_ms": 4.29,
+   "challenge": {
+    "bar_height_m": 1.1
+   },
+   "terminal_reason": "timeout",
+   "progress": 0.8909,
+   "distance_m": 12.47,
+   "steps": 900,
+   "max_steps": 900,
+   "metrics": {
+    "bar_height_m": 1.1,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 14,
+   "event": "high_jump",
+   "attempt": 2,
+   "friction_level": 0.6607,
+   "wind_speed_ms": 6.29,
+   "challenge": {
+    "bar_height_m": 1.2
+   },
+   "terminal_reason": "timeout",
+   "progress": 0.7951,
+   "distance_m": 11.13,
+   "steps": 900,
+   "max_steps": 900,
+   "metrics": {
+    "bar_height_m": 1.2,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 15,
+   "event": "high_jump",
+   "attempt": 3,
+   "friction_level": 0.9107,
+   "wind_speed_ms": 0.29,
+   "challenge": {
+    "bar_height_m": 1.3
+   },
+   "terminal_reason": "timeout",
+   "progress": 0.9367,
+   "distance_m": 13.11,
+   "steps": 900,
+   "max_steps": 900,
+   "metrics": {
+    "bar_height_m": 1.3,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 16,
+   "event": "long_jump",
+   "attempt": 0,
+   "friction_level": 0.1652,
+   "wind_speed_ms": 2.32,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.6421,
+   "distance_m": 14.77,
+   "steps": 1000,
+   "max_steps": 1000,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.128427
+  },
+  {
+   "task": 17,
+   "event": "long_jump",
+   "attempt": 1,
+   "friction_level": 0.4152,
+   "wind_speed_ms": 4.32,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.61,
+   "distance_m": 14.03,
+   "steps": 1000,
+   "max_steps": 1000,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.122
+  },
+  {
+   "task": 18,
+   "event": "long_jump",
+   "attempt": 2,
+   "friction_level": 0.6652,
+   "wind_speed_ms": 6.32,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.5295,
+   "distance_m": 12.18,
+   "steps": 1000,
+   "max_steps": 1000,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.105905
+  },
+  {
+   "task": 19,
+   "event": "long_jump",
+   "attempt": 3,
+   "friction_level": 0.9152,
+   "wind_speed_ms": 0.32,
+   "challenge": {},
+   "terminal_reason": "timeout",
+   "progress": 0.6325,
+   "distance_m": 14.55,
+   "steps": 1000,
+   "max_steps": 1000,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 0.0,
+    "triple_phase": 0.0
+   },
+   "score": 0.126499
+  },
+  {
+   "task": 20,
+   "event": "triple_jump",
+   "attempt": 0,
+   "friction_level": 0.1119,
+   "wind_speed_ms": 1.9,
+   "challenge": {},
+   "terminal_reason": "jump_foul",
+   "progress": 0.5161,
+   "distance_m": 13.94,
+   "steps": 942,
+   "max_steps": 1400,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 11.8867,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 21,
+   "event": "triple_jump",
+   "attempt": 1,
+   "friction_level": 0.3619,
+   "wind_speed_ms": 3.9,
+   "challenge": {},
+   "terminal_reason": "jump_foul",
+   "progress": 0.5167,
+   "distance_m": 13.95,
+   "steps": 1042,
+   "max_steps": 1400,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 11.9199,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 22,
+   "event": "triple_jump",
+   "attempt": 2,
+   "friction_level": 0.6119,
+   "wind_speed_ms": 5.9,
+   "challenge": {},
+   "terminal_reason": "jump_foul",
+   "progress": 0.5067,
+   "distance_m": 13.68,
+   "steps": 922,
+   "max_steps": 1400,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 11.7473,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  },
+  {
+   "task": 23,
+   "event": "triple_jump",
+   "attempt": 3,
+   "friction_level": 0.8619,
+   "wind_speed_ms": 7.9,
+   "challenge": {},
+   "terminal_reason": "jump_foul",
+   "progress": 0.5085,
+   "distance_m": 13.73,
+   "steps": 1017,
+   "max_steps": 1400,
+   "metrics": {
+    "bar_height_m": 0.0,
+    "best_clearance_m": 0.0,
+    "jump_distance_m": 0.0,
+    "takeoff_contact_x_m": 11.7685,
+    "triple_phase": 0.0
+   },
+   "score": 0.0
+  }
+ ]
+}

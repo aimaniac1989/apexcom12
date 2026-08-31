@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300">
+  <rect width="720" height="300" rx="20" fill="#152131"/>
+  <text x="38" y="57" fill="#f7fafc" font-family="system-ui,sans-serif" font-size="32" font-weight="700">High jump</text>
+  <text x="38" y="88" fill="#aebdcd" font-family="system-ui,sans-serif" font-size="20">20 m run-up and a single raised bar</text>
+  <rect x="38" y="206" width="644" height="40" rx="5" fill="#8a929b"/>
+  <circle cx="63" cy="226" r="13" fill="#57d49a"/><path d="M84 217h185v-13l25 22-25 22v-13H84z" fill="#57d49a"/>
+  <path d="M456 111v94M436 111h40" stroke="#f8dd4a" stroke-width="9"/>
+  <text x="391" y="95" fill="#57d49a" font-family="system-ui,sans-serif" font-size="20" font-weight="700">1.00–1.30 m</text>
+  <text x="526" y="278" fill="#57d49a" font-family="system-ui,sans-serif" font-size="19" font-weight="700">bar @ 12 m</text>
+</svg>

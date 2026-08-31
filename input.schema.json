@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "humanoid_olympics round input",
+  "description": "A balanced six-event Humanoid Olympics meet. Every evaluation contains the same number of attempts of each discipline and the same public, balanced stratum structure; the conditions themselves are drawn from the round seed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["seed", "instances_per_event", "deadline_ms"],
+  "properties": {
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Platform round identifier. It selects the round's conditions: the friction and wind strata are phase-shifted per round and per event, so no two rounds present the same 24 attempts. The meet's shape is unchanged by it -- same events, same attempt count, and four evenly spaced strata spanning the full envelope every round -- and a given seed reproduces its meet exactly."
+    },
+    "instances_per_event": {
+      "type": "integer",
+      "const": 4,
+      "default": 4,
+      "description": "Four attempts of each of the six disciplines: the fixed 24-attempt launch meet."
+    },
+    "deadline_ms": {
+      "type": "integer",
+      "const": 500,
+      "default": 500,
+      "description": "Fixed per-action HTTP deadline for the launch version."
+    },
+    "wind_max_ms": {
+      "type": "number",
+      "const": 8,
+      "default": 8,
+      "description": "Fixed maximum round-derived ground-level wind speed in m/s."
+    },
+    "record_history": {
+      "type": "boolean",
+      "const": true,
+      "default": true,
+      "description": "The fixed launch meet records replayable history for all 24 attempts."
+    },
+    "history_stride": {
+      "type": "integer",
+      "const": 2,
+      "default": 2,
+      "description": "The fixed launch history keeps every second 50 Hz control frame."
+    }
+  }
+}

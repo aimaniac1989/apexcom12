@@ -1,0 +1,95 @@
+schema: apex.competition.v1
+id: humanoid_olympics
+version: 0.4.0
+display_name: "Humanoid Olympics"
+kind: solo
+process_type: cpu
+
+# The referee holds one compiled G1 scene at a time, rather than six: event
+# attempts are grouped by event and a 24-attempt meet stays within 2 GiB.
+resources:
+  cpu_limit: 2
+  mem_limit: 2Gi
+  gpu_count: 0
+
+# Pinned from the v0.4.0 release run (Actions run 32323631933), all four jobs green. Both digests
+# were resolved from ghcr by the v0.4.0 tag and verified with `cosign verify`: signature present,
+# transparency-log entry verified, cert chain verified against the trusted roots, issuer is the
+# GitHub OIDC endpoint, and the cert SAN is this file's `cosign_identity` at refs/tags/v0.4.0. The
+# signing workflow sha is 98ffc31e587623e72e1983383c5914ab8264d117, which is v0.4.0^{commit} -- so
+# these images draw each round's friction and wind from the platform round seed, rather than
+# 0.3.0's one fixed 24-attempt meet. As with 0.2.0 and 0.3.0 these are the FINAL tag's own digests,
+# not a candidate's. The platform pins by digest and rejects tags.
+image:
+  ref: ghcr.io/macrocosm-os/apex-competition-humanoid-olympics-player
+  digest: sha256:d26f215070b2e654d8956ca772cf5f95c0da8ac80b2a8814798222d9597f89b7
+
+# A recurrent ONNX controller receives the same 104-float sensory contract as
+# its predecessor and emits 12 joint-position targets plus 256 opaque state
+# floats. The broad terrain preview now describes the active event's route.
+submission:
+  artifact_type: onnx
+  max_size_mb: 15
+  target_path: /app/submission.onnx
+
+screening:
+  max_size_mb: 15
+  min_weight_bytes: 10000
+  max_code_weight_ratio: 0.1
+
+input_schema:
+  $ref: ./input.schema.json
+
+defaults:
+  baseline_score: 0.0
+  # 0.0 BY CHOICE, matching humanoid_parkour, not a measurement. This is the platform's ENTRY BAR
+  # (score_to_beat = max(this, top_raw) * (1 + SCORE_THRESHOLD)) and it binds until first blood.
+  #
+  # 0.1.0 pinned the measured 0.032985375, which turned out to be the wrong thing to pin twice over.
+  # It was measured with three of the four friction strata clamped to mu 1.0, so it described a
+  # grippier meet than the spec advertised. And a measured bar has to be RE-measured on every
+  # physics change, on a native-amd64 runner inside the real referee image -- host and image
+  # disagree by ~0.08% against a 1% takeover margin, so a convenient local number is not a
+  # substitute. That made a 20-seed calibration a blocking gate on every release.
+  #
+  # Pinning 0.0 removes the gate and the class of error with it: the bar can no longer sit above the
+  # true baseline and stall a round forever, and it cannot silently encode stale physics. Cost:
+  # round 1 goes to anything scoring above zero, which self-corrects on the first real athlete.
+  #
+  # 0.4.0 makes this the only defensible choice rather than merely the convenient one. Conditions
+  # are now drawn per round, so there is no longer a single number a fixed baseline HAS -- the
+  # baseline artifact spans 0.032295-0.033621 over 20 round seeds (mean 0.032890, sd 0.000362,
+  # CV 1.10%; host-measured, so the ~0.08% host/image disagreement above applies to the absolute
+  # figures but is two orders below the spread being reported). Any constant pinned here would sit
+  # above the baseline's true score in roughly half of all rounds. Note what this figure means for the takeover margin: cross-round condition
+  # spread is about the size of the 1% threshold, which is survivable only because the incumbent is
+  # re-scored on the CHALLENGER'S OWN round seed, making the noise common-mode within the
+  # comparison that decides the round.
+  baseline_raw_score: 0.0
+  round_length_in_days: 2
+  submission_reveal_days: 5
+  lower_is_better: false
+
+entrypoints:
+  evaluate:
+    command: ["python", "/app/launch.py", "--port", "8000"]
+    network_disabled: false
+    allow_internet: false
+    # A four-attempt meet has at most 40,000 control calls. The referee's
+    # internal 840-second budget leaves time to persist a result.
+    timeout_s: 1200
+    http_api:
+      port: 8000
+      readiness_path: /health
+      protocol: gym_v1
+
+referee:
+  protocol: gym_v1
+  image:
+    ref: ghcr.io/macrocosm-os/apex-competition-humanoid-olympics-referee
+    digest: sha256:9e12a4f47625abc1a31be5ed187715f229317498f18ace1970dc591ac109703e
+  timeout_s: 900
+
+signature:
+  cosign_identity: https://github.com/macrocosm-os/apex-competition-humanoid-olympics/.github/workflows/release.yml@refs/tags/*
+  cosign_issuer: https://token.actions.githubusercontent.com
