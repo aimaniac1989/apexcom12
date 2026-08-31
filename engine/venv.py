@@ -20,6 +20,7 @@ option here.
 from __future__ import annotations
 
 import multiprocessing as mp
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -88,7 +89,7 @@ class VecOlympics:
 
     def __init__(self, n_workers: int = 12, seed: int = 0,
                  cfg: RewardConfig | None = None, step_cap: int = 0,
-                 use_mjb: bool = True) -> None:
+                 use_mjb: bool = True, events: Sequence[str] | None = None) -> None:
         cfg = cfg or RewardConfig()
         # fork where available (Linux): the child inherits the parent image, so it neither
         # re-imports the entry module nor reloads torch. On Windows only spawn exists, which is
@@ -96,7 +97,15 @@ class VecOlympics:
         method = "fork" if "fork" in mp.get_all_start_methods() else "spawn"
         ctx = mp.get_context(method)
         self.n = n_workers
-        self.events = [EVENTS[i % len(EVENTS)] for i in range(n_workers)]
+        # `events` narrows the pool to a curriculum subset. With all six round-robined, an
+        # event that cannot score at all yet still consumes 1/6 of the workers -- high_jump pays
+        # nothing until the bar is crossed, and sprint_400 is the one rewards.py says needs a
+        # curriculum rather than a coefficient. None keeps the full meet.
+        pool = tuple(events) if events else EVENTS
+        unknown = sorted(set(pool) - set(EVENTS))
+        if unknown:
+            raise ValueError(f"unknown event(s) {unknown}; choose from {list(EVENTS)}")
+        self.events = [pool[i % len(pool)] for i in range(n_workers)]
         if use_mjb:
             from engine.mjb import build            # compile once in the PARENT, before forking
             for event in sorted(set(self.events)):

@@ -170,8 +170,12 @@ def train(args) -> None:
          {"params": critic.parameters(), "lr": args.lr * 3},
          {"params": [log_std], "lr": args.lr}], eps=1e-5)
 
+    events = tuple(e.strip() for e in args.events.split(",") if e.strip()) or None
     venv = VecOlympics(n_workers=args.workers, seed=args.seed,
-                       cfg=RewardConfig(), step_cap=args.step_cap)
+                       cfg=RewardConfig(), step_cap=args.step_cap, events=events)
+    if events:
+        # The eval hook still scores the FULL meet, so raw_score stays comparable across runs.
+        print(f"curriculum: training {sorted(set(venv.events))} only")
     N, T = venv.n, args.horizon
     obs_np = venv.reset()
     state = torch.zeros(N, STATE_DIM)
@@ -377,6 +381,9 @@ if __name__ == "__main__":
     ap.add_argument("--init", default="engine/runs/warm.pt")
     ap.add_argument("--out", default="engine/runs/ppo.pt")
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--events", default="",
+                    help="comma-separated event subset to train on, e.g. sprint_100 "
+                         "(default: all six, round-robin across workers)")
     ap.add_argument("--horizon", type=int, default=128)
     ap.add_argument("--bptt", type=int, default=32)
     ap.add_argument("--updates", type=int, default=400)

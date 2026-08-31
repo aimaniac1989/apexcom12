@@ -2,7 +2,7 @@
 
 The competition score is almost entirely terminal -- a completed race pays 0.25 upward, everything
 else pays `0.24 * progress` -- and terminal-only signal is far too sparse to learn a gait from. So
-this file turns the scoring rules into per-step reward, and it is written against four things
+this file turns the scoring rules into per-step reward, and it is written against six things
 measured in this repo rather than guessed:
 
 1.  **In-flight uprightness must be continuous, not terminal.** The `fell` gate is
@@ -30,6 +30,18 @@ measured in this repo rather than guessed:
     linear progress term indifferent to falling), and progress was paid per METRE against a scorer
     that pays per route fraction (so the 400 m was shaped 28x harder than the high jump for events
     `meet_score` weights equally). See `r_fell` and `w_progress` below.
+
+6.  **high_jump has no progress credit at all, so nothing here pointed at the bar.** It is the
+    only event `instance_score` does not pay on `progress`: it pays `0.24 * clearance/target`,
+    and `sim._best_clearance` is written in exactly one place -- inside `if prev_x <= bar_x <= x`
+    in `env/sim.py` -- so it is 0.0 until the pelvis has already crossed the bar plane. Two
+    consequences. The `w_score` anchor is identically 0 on this event, so the one term that keeps
+    shaping honest is switched off precisely where shaping is loosest. And `w_clearance` keys off
+    that same field, making it a reward for a jump already made rather than a gradient toward
+    making one -- so walking the 14 m route and timing out banked ~1300 against a real score of
+    0.000, which is note 3's "stop at the board" local optimum with no `w_takeoff` to oppose it
+    (that term is gated on `JUMP_EVENTS`, and high_jump is not in it). `w_apex` is the missing
+    gradient: note 1 applied to height instead of attitude.
 """
 
 from __future__ import annotations
@@ -37,6 +49,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
+
+# Pelvis height at reset, above the plinth (`env/sim.py` sets qpos[2] = PLINTH_TOP + 0.793).
+# `w_apex` pays rise ABOVE this, so merely standing earns nothing.
+STAND_PELVIS_Z = 0.793
 
 RACE_EVENTS = frozenset({"sprint_100", "sprint_400", "hurdles_100"})
 JUMP_EVENTS = frozenset({"long_jump", "triple_jump"})
@@ -77,6 +93,14 @@ class RewardConfig:
     w_takeoff: float = 15.0       # one-off, on a legal one-foot board departure
     w_phase: float = 40.0         # per triple-jump phase reached (hop, step, landing)
     w_clearance: float = 8.0      # per metre of new best high-jump clearance
+    # Per metre of new-best pelvis rise, paid only within `apex_window_m` of the bar. This is the
+    # only term on high_jump that pays before the crossing (note 6). Sized against the failure it
+    # must beat: the lowest bar needs 1.00 + HIGH_CLEARANCE_MARGIN_M - STAND_PELVIS_Z = 0.287 m of
+    # rise, and an early attempt at it mostly ends `fell` at -60. 300 pays ~86 for that rise, so
+    # trying beats not trying, while staying below r_success so it cannot substitute for actually
+    # clearing. Untuned -- this is the first coefficient to revisit once high_jump scores at all.
+    w_apex: float = 300.0
+    apex_window_m: float = 2.5    # a rise anywhere else on the route is not a high jump
     w_hurdle: float = 10.0        # per hurdle passed without contact
     r_success: float = 120.0      # terminal, on completed / cleared / landed
     # Terminal, on `fell`. The missing term: without it a fall is free (it even PAID, via w_score
@@ -104,6 +128,7 @@ class EpisodeTracker:
     prev_action: np.ndarray | None = None
     prev_phase: int = 0
     prev_clearance: float = 0.0
+    prev_apex: float = 0.0
     took_off: bool = False
     hurdles_passed: int = 0
 
@@ -112,11 +137,12 @@ class EpisodeTracker:
         self.prev_action = None
         self.prev_phase = 0
         self.prev_clearance = 0.0
+        self.prev_apex = 0.0
         self.took_off = False
         self.hurdles_passed = 0
 
     def step(self, sim, action: np.ndarray, reason: str | None) -> float:
-        from env.course import HURDLE_HEIGHTS_M  # noqa: F401  (kept for hurdle geometry parity)
+        from env.course import HURDLE_HEIGHTS_M, PLINTH_TOP  # noqa: F401  (hurdle parity)
         from env.scoring import instance_score
         from env.sim import UPRIGHT_MIN
 
@@ -161,6 +187,15 @@ class EpisodeTracker:
             if clearance > self.prev_clearance:
                 r += c.w_clearance * (clearance - self.prev_clearance)
                 self.prev_clearance = clearance
+            # The gradient `w_clearance` cannot supply (note 6): pelvis rise near the bar, paid
+            # whether or not the crossing lands. On the NEW-BEST delta only -- a level term would
+            # pay every step of a hover, and the apex is what the bar actually judges.
+            if abs(float(sim.data.qpos[0])
+                   - float(sim.layout.challenge["bar_x_m"])) <= c.apex_window_m:
+                rise = float(sim.data.qpos[2]) - PLINTH_TOP - STAND_PELVIS_Z
+                if rise > self.prev_apex:
+                    r += c.w_apex * (rise - self.prev_apex)
+                    self.prev_apex = rise
         elif sim.event == "hurdles_100":
             from env.course import build_event
             px = float(sim.data.qpos[0])
