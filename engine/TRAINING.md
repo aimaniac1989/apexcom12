@@ -37,6 +37,11 @@ upd    5  steps 15,710,720   2010/s  rew   194.78  pi +0.0229  v  547.425  kl +0
 `prog` and the reason histogram are the run's real vital signs. `fell` shrinking against `timeout`
 is a fall fix working, and it shows well before `prog` climbs.
 
+**Read the per-event line, not the aggregate.** The `eps` line averages a 400 m route with a 14 m
+one, so its `dist` cannot separate "one event reaches 58 m and four fall at 3 m" from "all five
+fall at 12 m" -- and those want opposite responses. A third line breaks `prog`, `dist` and `fell`
+down per event. Aggregate-only reading produced two wrong diagnoses in this project already.
+
 **`bar_missed` is not a hard zero, and the policy found that.** At 44M steps `high_jump`
 scored 0.0772 *without being in the curriculum*. Backing it out: `0.24 * clearance/target` gives a
 clearance of 0.37 m above the plinth, against a standing pelvis of 0.793 and a bar at 1.00-1.30.

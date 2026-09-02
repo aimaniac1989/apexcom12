@@ -110,6 +110,20 @@ def _report(update, total_steps, steps_at_start, t_start, b_rew, stats, anchor_w
         hist = "  ".join(f"{r} {c}" for r, c in reasons.most_common())
         print(f"        eps {n:3d}  prog {prog:.3f}  dist {dist:6.1f} m  "
               f"fin {finished}  foul {fouls}  | {hist}", flush=True)
+        # Per event, because the aggregate above is close to meaningless: it means a 400 m route
+        # with a 14 m one, so `dist` cannot distinguish "one event reaches 58 m and four fall at
+        # 3 m" from "all five fall at 12 m" -- and those want opposite responses.
+        by = {}
+        for i in recent:
+            by.setdefault(i.get("event", "?"), []).append(i)
+        cells = []
+        for ev in sorted(by):
+            rows = by[ev]
+            pe = sum(float(r.get("score", 0.0)) for r in rows) / len(rows)
+            de = sum(float(r.get("distance_m", 0.0)) for r in rows) / len(rows)
+            fe = sum(1 for r in rows if r.get("reason") == "fell")
+            cells.append(f"{ev} {pe:.2f} {de:4.1f}m fell {fe}/{len(rows)}")
+        print("        " + "  ".join(cells), flush=True)
 
 
 def _checkpoint(update, args, out, policy, critic, opt, log_std, total_steps, best) -> None:
