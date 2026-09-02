@@ -19,9 +19,11 @@ measured in this repo rather than guessed:
     and a local minimum that no amount of further training escapes. `w_takeoff` and the phase
     bonuses exist to make committing strictly better than balking.
 
-4.  **The action must stay smooth.** `env/sim.py` clips to +-10, and a controller railed against
-    that clip is maximally sensitive to perturbation. The smoothness penalty targets that
-    directly; it is cheap insurance against inheriting a bang-bang gait.
+4.  **The action must stay smooth -- but only barely.** `env/sim.py` clips to +-10, and a
+    controller railed against that clip is sensitive to perturbation, so a small penalty is worth
+    keeping. It was 20x larger until the rival artifacts were read: at 0.004 it cost an aggressive
+    gait 42% of everything a completed 100 m pays, and made a large-amplitude one net negative.
+    See `w_smooth` and note 7.
 
 5.  **Falling must cost something, and progress must be paid as a FRACTION.** Both learned from an
     11.2M-step PPO run that reached raw 0.0519 with `fin 0/200` -- not one completion in 200
@@ -42,6 +44,14 @@ measured in this repo rather than guessed:
     0.000, which is note 3's "stop at the board" local optimum with no `w_takeoff` to oppose it
     (that term is gated on `JUMP_EVENTS`, and high_jump is not in it). `w_apex` is the missing
     gradient: note 1 applied to height instead of attitude.
+
+7.  **The winning regime is high-power ballistic, and unbounded power is why it exists.** MuJoCo
+    `<motor>` actuators deliver their full torque at any joint velocity -- there is no torque-speed
+    curve, so mechanical power is unbounded even though torque is capped. The 0.6154 leader in
+    `analysis/riv_0830_seed1.json` runs the 400 m at 12.4 m/s, clears the high bar with 1.95 m of
+    pelvis rise against a 1.30 m bar, and lands a 12.33 m long jump. None of that is physical; all
+    of it is legal. A shaping function tuned for a plausible walking gait -- which this one was --
+    prices the winning gait out of reach, which is what notes 4 and 5 were doing.
 """
 
 from __future__ import annotations
@@ -87,8 +97,21 @@ class RewardConfig:
     # 0.03/0.35 a 400 m timeout banked 864 -- more than 70% of that route's entire progress budget.
     w_alive: float = 0.01         # per surviving step; keeps early training from suiciding
     w_upright: float = 0.20       # per step, on (xmat22 - UPRIGHT_MIN); the flight-attitude term
-    w_smooth: float = 0.004       # per step, on ||a - a_prev||^2
-    w_effort: float = 0.0008      # per step, on ||a||^2
+    # Both cut 20x and 8x, measured against what actually wins. `analysis/riv_0830_seed1.json`:
+    # the 0.6154 leader completes the 100 m in 528 steps (9.66 m/s), the 400 m at 12.4 m/s, clears
+    # the high bar with 1.95 m of pelvis rise and lands a 12.33 m long jump. That regime exists
+    # because MuJoCo `<motor>` has no torque-speed curve -- torque is capped (139 N.m knee and hip
+    # roll, 88 hip pitch/yaw, 50 ankle) but mechanical POWER is not, and the joints carry
+    # damping 0.001 / frictionloss 0.1. High-power ballistic locomotion is therefore reachable.
+    #
+    # At the old weights our function forbade it. A completed 100 m pays ~1512 all in. An
+    # aggressive gait (|a|~5, |da|~5) paid -634 in smoothness alone, 42% of that; |a|=|da|=10 came
+    # to -2534 and went net NEGATIVE at -1529; true bang-bang reached -10138. Note 4 called
+    # w_smooth "cheap insurance against inheriting a bang-bang gait" -- the measurement says a
+    # bang-bang gait is the winning gait, and 0.004 taxed it out of existence. Our policy sat at
+    # 2.4 m/s, which is about where the smoothness-constrained optimum is.
+    w_smooth: float = 0.0002      # per step, on ||a - a_prev||^2
+    w_effort: float = 0.0001      # per step, on ||a||^2
     w_lateral: float = 0.25       # per step, on cross-track error^2 (out_of_bounds is a zero)
     w_takeoff: float = 15.0       # one-off, on a legal one-foot board departure
     w_phase: float = 40.0         # per triple-jump phase reached (hop, step, landing)

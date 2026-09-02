@@ -87,6 +87,49 @@ Interference is real, but it destroys *stability*, not behavioural choice. That 
 per-event `head1` is not sufficient on its own: the gait lives in `enc1`/`enc2`/the GRU, which the
 head fork leaves shared and still being pulled five ways. Hence `--freeze-trunk`.
 
+## What the field leader actually does
+
+`analysis/riv_0830_seed1.json`, raw 0.6154, **19 of 24 attempts finished**:
+
+| event | outcome | speed | metric |
+|---|---|---|---|
+| `sprint_100` | completed x4, 528-555 steps | 9.2-9.7 m/s | |
+| `sprint_400` | completed x4, 1609-1691 steps | 11.8-12.4 m/s | |
+| `hurdles_100` | completed x3, one `hurdle_hit` | 9.4-9.6 m/s | |
+| `high_jump` | **cleared x4** | | clearance 1.92-2.12 m vs bars of 1.00-1.30 |
+| `long_jump` | **landed x4** | | jumps of 11.35-12.41 m |
+| `triple_jump` | **fell x4**, 0.155 each | | nobody has solved this event |
+
+A 12.33 m long jump. A 1.16 m pelvis rise above standing. 12.4 m/s — 45 km/h. None of that is
+physical, and all of it is legal: MuJoCo `<motor>` actuators have **no torque-speed curve**, so
+they deliver full torque at any joint velocity and mechanical power is unbounded. Torque is capped
+(139 N·m knee and hip roll, 88 hip pitch/yaw, 50 ankle) but the joints carry `damping 0.001` and
+`frictionloss 0.1`. The winning regime is high-power ballistic locomotion, not walking.
+
+`riv_0825_1` (0.4564) is the same speeds with `bar_missed` at clearance 0.66-0.74 — it **ducks**
+under the bar, exactly the strategy our own policy found. `riv_0830`'s advance over it was learning
+to actually clear. So the duck is a known waypoint worth 0.12-0.17, not a dead end.
+
+### Our shaping forbade that regime
+
+A completed 100 m pays about 1512 all in. Against that, at the old `w_smooth = 0.004`:
+
+| gait (per-joint \|a\|, \|da\|) | effort | smooth | net |
+|---|---|---|---|
+| gentle walk (1, 0.5) | -5 | -6 | 1501 |
+| brisk (3, 2) | -46 | -101 | 1365 |
+| aggressive (5, 5) | -127 | **-634** | 752 |
+| large amplitude (10, 10) | -507 | **-2534** | **-1529** |
+| bang-bang ±10 (10, 20) | -507 | **-10138** | **-9132** |
+
+Note 4 called `w_smooth` *"cheap insurance against inheriting a bang-bang gait."* A bang-bang gait
+is the winning gait, and 0.004 taxed it out of existence — our policy settled at 2.4 m/s, which is
+roughly where the smoothness-constrained optimum sits. Cut to 0.0002 / 0.0001.
+
+**This also reverses the entropy advice.** Lowering `--ent` sharpens toward the *nearest* optimum,
+which is the slow one. Exploration should stay wide until the reward stops forbidding the target
+regime; revisit `--ent` only once speed is actually climbing.
+
 ## Measured history
 
 | steps | raw | sprint_100 | sprint_400 | hurdles | high | long | triple | note |
