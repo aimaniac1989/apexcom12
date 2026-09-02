@@ -184,10 +184,23 @@ def train(args) -> None:
     for p in anchor.parameters():
         p.requires_grad_(False)
 
+    # Freeze the gait. Measured: sprint_100 reached 58.2 m on a single-event pool, 13.1 m on
+    # four events and 12.1 m on five, and at 35.7M steps 91% of episodes end in `fell` with
+    # `timeout` never once appearing. Multi-event training is not making the policy choose a
+    # different behaviour, it is destroying the gait -- and the gait lives in enc1/enc2/gru, which
+    # the per-event head1 leaves shared. With no gradient reaching them the trunk cannot degrade,
+    # and each event still adapts through its own head. A frozen trunk cannot learn to JUMP, so
+    # this is deliberately a harvest-the-partial-credit run.
+    if args.freeze_trunk:
+        for module in (policy.enc1, policy.enc2, policy.gru):
+            for p in module.parameters():
+                p.requires_grad_(False)
+        print("trunk frozen: enc1/enc2/gru held, only the per-event heads train")
+
     critic = Critic()
     log_std = nn.Parameter(torch.full((ACT_DIM,), float(np.log(args.init_std))))
     opt = torch.optim.Adam(
-        [{"params": policy.parameters(), "lr": args.lr},
+        [{"params": [p for p in policy.parameters() if p.requires_grad], "lr": args.lr},
          {"params": critic.parameters(), "lr": args.lr * 3},
          {"params": [log_std], "lr": args.lr}], eps=1e-5)
 
@@ -406,6 +419,9 @@ if __name__ == "__main__":
     ap.add_argument("--init", default="engine/runs/warm.pt")
     ap.add_argument("--out", default="engine/runs/ppo.pt")
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--freeze-trunk", type=int, default=0,
+                    help="hold enc1/enc2/gru and train only the per-event heads, so a "
+                         "multi-event pool cannot degrade the gait it starts from")
     ap.add_argument("--events", default="",
                     help="comma-separated event subset to train on, e.g. sprint_100 "
                          "(default: all six, round-robin across workers)")

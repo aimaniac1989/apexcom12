@@ -4,9 +4,9 @@ Companion to `engine/README.md`, which covers the architecture. This file covers
 scoring geometry the training has to satisfy, what has actually been measured on the box, and the
 runbook for driving a multi-day session over ssh.
 
-Status as of 2026-09-01: meet `raw` is **0.0633**, past the baseline's 0.0330 for the first time,
-against the field leader's 0.6126. A gait exists but is currently being spent on the wrong thing —
-see *Interference* below.
+Status as of 2026-09-02: best meet `raw` is **0.0633** (44M, four-event pool), past the baseline's
+0.0330 and against the field leader's 0.6126. The binding constraint is **stability**: the policy
+falls at ~12 m and multi-event training makes it worse, not better. See *The 12 m wall*.
 
 ## The scoring geometry
 
@@ -48,6 +48,39 @@ requires is worth **0.1671**.
 pay on `progress` — it pays `0.24 * clearance/target`, and `sim._best_clearance` is written in
 exactly one place, inside `if prev_x <= bar_x <= x` in `env/sim.py`. So it is 0.0 until the pelvis
 has already crossed the bar plane. See note 6 in `engine/rewards.py`.
+
+## The 12 m wall
+
+The reason histogram from `894fbde` settled a question that two months of `fin 0/200` could not.
+At 27.4M steps on a five-event pool, over a 200-episode window:
+
+```
+  fell            165.7  (83%)
+  bar_hit          21.4  (11%)
+  bar_missed       11.7  (6%)
+  out_of_bounds     1.0  (0%)
+  timeout           0.0  (0%)   <- never once
+```
+
+By 35.7M it was `fell 181.2` (91%). **The policy is not choosing where to stop, it is collapsing** —
+not one episode in 200 ever reaches its step cap. Every earlier reading of the 13-16 m band as a
+"stop at the board" strategy was wrong, and so was the reasoning built on it.
+
+Eval is deterministic (`evaluate.py` takes the mean action), and it reaches 17.5 m on `sprint_100`
+against 12.1 m for the sampled training rollouts — so the pinned 0.25 action noise costs about 5 m
+on top of a ceiling that is already the problem.
+
+**The gait degrades monotonically with pool size:**
+
+| pool | sprint_100 reach |
+|---|---|
+| `sprint_100` alone | 58.2 m |
+| four events | 13.1 m |
+| five events | 17.5 m deterministic / 12.1 m sampled |
+
+Interference is real, but it destroys *stability*, not behavioural choice. That is why the
+per-event `head1` is not sufficient on its own: the gait lives in `enc1`/`enc2`/the GRU, which the
+head fork leaves shared and still being pulled five ways. Hence `--freeze-trunk`.
 
 ## Measured history
 
@@ -118,6 +151,14 @@ optimising deliberately, and `w_apex` has still never run.
 | `5f51125` | `r_fell` added; progress paid as route fraction not metres; `r_foul` -40 -> -150 |
 | `f684e44` | `w_apex` gives high_jump a pre-crossing gradient; `--events` curriculum subset |
 | `894fbde` | log route progress + terminal-reason histogram; fix the resumed-run throughput figure |
+| `61f9139` | per-event `head1`, sliced by the latched one-hot; `expand_head1` checkpoint migration |
+| (this) | `--freeze-trunk`; `w_apex` to 0 |
+
+**`w_apex` is off, measured.** Over ~6M `high_jump` steps it never produced one clearance, and the
+rise it buys near the bar converts clean ducks into strikes — `bar_hit` records no clearance and so
+scores 0.000, where a duck taking `bar_missed` scores 0.077. `high_jump` fell 0.0772 -> 0.0338 on
+entering the pool, and by 35.7M `bar_missed` had collapsed 11.7 -> 2.6 per 200 as the extra height
+destabilised the approach. Restore it when the gait survives past 58 m.
 
 **A reward change invalidates the stored critic.** `--resume` restores the critic *and* Adam's
 moments, which were fit to the old return distribution. Resuming across `5f51125` showed up as
@@ -134,9 +175,11 @@ and the run spends `--anchor-steps` BC-fitting the policy to its own current gai
 Always launch inside tmux — the trainer is then a child of the tmux server, not of the ssh
 session, and survives a dropped connection.
 
+### First start (new curriculum from a checkpoint)
+
 ```bash
 tmux new -s meet
-cd ~/competetion012 && source .venv/bin/activate
+cd ~/apollo/apexcom12 && source .venv/bin/activate   # adjust path if different
 
 PYTHONPATH=$(pwd) python engine/ppo.py \
     --events sprint_100,sprint_400,long_jump,triple_jump \
@@ -149,11 +192,57 @@ PYTHONPATH=$(pwd) python engine/ppo.py \
 `ctrl-b` `d` detaches. Reattach with `tmux attach -t meet`, or in one line from a fresh login:
 `ssh vps -t tmux attach -t meet`.
 
-Restarting after a crash uses the same command **without** `--resume 0` (the state file was written
-under the current reward, so resuming it is correct) and with `tee -a` so the log appends. Keep
-`--anchor 0`. At `--save-every 10` you lose ten updates at most.
+### Continue training (same run after crash / disconnect)
 
-Reading it without attaching — tmux scrollback caps at 2000 lines, the log does not:
+1. Check whether it is already running:
+
+```bash
+pgrep -af engine/ppo.py
+tmux ls
+tmux attach -t meet    # if the session still exists, you are done
+```
+
+2. If the process died but checkpoints remain, resume from `<out>_state.pt`. Use the **same**
+   `--out` path, **omit** `--resume 0` (default `--resume 1`), and append the log with `tee -a`:
+
+```bash
+cd ~/apollo/apexcom12 && source .venv/bin/activate
+tmux new -s meet
+
+PYTHONPATH=$(pwd) python engine/ppo.py \
+    --events sprint_100,sprint_400,long_jump,triple_jump \
+    --init engine/runs/meet.pt \
+    --anchor 0 \
+    --workers $(( $(nproc) - 2 )) --horizon 128 --minibatch 2048 \
+    --eval-every 25 --eval-seeds 2 --save-every 10 --updates 20000 \
+    --out engine/runs/meet.pt 2>&1 | tee -a engine/runs/meet.log
+```
+
+You should see `resumed engine/runs/meet_state.pt at N steps (best ...)`. That restores policy,
+critic, Adam moments, `log_std`, and step count. At `--save-every 10` you lose at most ten updates.
+
+| file | role |
+|---|---|
+| `<out>_state.pt` | full resume (preferred for continue) |
+| `<out>.pt` | latest policy weights |
+| `<out>_best.pt` | best full-meet EVAL raw — prefer as `--init` only when starting a **new** run |
+
+Match `--out` / `--init` to the run you actually have (`meet.pt`, `ppo.pt`, `sprint.pt`, …):
+
+```bash
+ls -lh engine/runs/*.pt
+grep EVAL engine/runs/*.log | tail
+```
+
+### When to use `--resume 0` instead
+
+Only after changing `engine/rewards.py`, or when starting a **new** curriculum from a weight file
+(not continuing the same optimiser state). Always pair with `--anchor 0`. Do **not** load the old
+`*_state.pt` in that case.
+
+### Monitor without attaching
+
+tmux scrollback caps at ~2000 lines; the log file does not:
 
 ```bash
 tail -f engine/runs/meet.log

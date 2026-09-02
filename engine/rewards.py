@@ -99,7 +99,14 @@ class RewardConfig:
     # rise, and an early attempt at it mostly ends `fell` at -60. 300 pays ~86 for that rise, so
     # trying beats not trying, while staying below r_success so it cannot substitute for actually
     # clearing. Untuned -- this is the first coefficient to revisit once high_jump scores at all.
-    w_apex: float = 300.0
+    # OFF, measured. Over ~6M high_jump steps it never produced one clearance, and the rise it
+    # buys near the bar converts clean ducks into strikes: `bar_hit` records no clearance and so
+    # scores 0.000, where a duck taking `bar_missed` scores 0.077. high_jump fell 0.0772 -> 0.0338
+    # the moment it entered the pool, and by 35.7M `bar_missed` had collapsed 11.7 -> 2.6 per 200
+    # as the extra height destabilised the approach and episodes started falling short of the bar.
+    # Ducking as upright as each bar allows is worth 0.1671 and is reachable; a 0.29 m rise is not,
+    # until the gait survives past 58 m. Restore this when that is true.
+    w_apex: float = 0.0
     apex_window_m: float = 2.5    # a rise anywhere else on the route is not a high jump
     w_hurdle: float = 10.0        # per hurdle passed without contact
     r_success: float = 120.0      # terminal, on completed / cleared / landed
