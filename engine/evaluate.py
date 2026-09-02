@@ -94,10 +94,10 @@ if __name__ == "__main__":
 
     import torch
 
-    from engine.model import OlympicsPolicy
+    from engine.model import OlympicsPolicy, expand_head1
 
     policy = OlympicsPolicy()
-    policy.load_state_dict(torch.load(args.ckpt, map_location="cpu"))
+    policy.load_state_dict(expand_head1(torch.load(args.ckpt, map_location="cpu")))
     result = evaluate_policy(policy, seeds=tuple(range(1, args.seeds + 1)),
                              instances_per_event=args.instances_per_event, verbose=True)
     print(json.dumps(result, indent=2))

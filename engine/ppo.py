@@ -164,7 +164,7 @@ def train(args) -> None:
     import torch.nn.functional as F
 
     from engine.model import (ACT_DIM, H_DIM, H_HI, H_LO, IN_DIM, OBS_DIM, STATE_DIM,
-                              OlympicsPolicy)
+                              OlympicsPolicy, expand_head1)
     from engine.rewards import RewardConfig
     from engine.venv import VecOlympics
 
@@ -176,7 +176,7 @@ def train(args) -> None:
 
     policy = OlympicsPolicy()
     if args.init:
-        policy.load_state_dict(torch.load(args.init, map_location="cpu"))
+        policy.load_state_dict(expand_head1(torch.load(args.init, map_location="cpu")))
         print(f"warm-started from {args.init}")
     anchor = OlympicsPolicy()
     anchor.load_state_dict(policy.state_dict())
@@ -213,7 +213,7 @@ def train(args) -> None:
     resume_path = out.with_name(out.stem + "_state.pt")
     if args.resume and resume_path.exists():
         ck = torch.load(resume_path, map_location="cpu")
-        policy.load_state_dict(ck["policy"])
+        policy.load_state_dict(expand_head1(ck["policy"]))
         critic.load_state_dict(ck["critic"])
         opt.load_state_dict(ck["opt"])
         with torch.no_grad():

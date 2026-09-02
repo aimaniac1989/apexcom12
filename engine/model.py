@@ -89,6 +89,23 @@ IN_DIM = OBS_DIM + D_DIM + N_TAU + N_EVENT + 1 + GEO_DIM   # 104+72+3+5+1+17 = 2
 OVERHEAD_CLEAR = 1.95
 
 
+def expand_head1(sd: dict, head_dim: int = 256) -> dict:
+    """Migrate a shared-head1 checkpoint to the per-event layout, or pass a new one through.
+
+    Every event class starts as a COPY of the trained shared head, so the migrated policy is
+    behaviourally identical to the one it came from -- day zero is a no-op and the classes
+    diverge only as training separates them. That identity is the migration's own test: export
+    before and after and the actions must match to float tolerance.
+    """
+    w, b = sd.get("head1.weight"), sd.get("head1.bias")
+    if w is None or w.shape[0] == N_EVENT * head_dim:
+        return sd                                    # already per-event, or not a policy dict
+    sd = dict(sd)
+    sd["head1.weight"] = w.repeat(N_EVENT, 1)        # tile along out_features: slice k == old
+    sd["head1.bias"] = b.repeat(N_EVENT)
+    return sd
+
+
 class GRUCell(nn.Module):
     """PyTorch's GRU cell in elementary ops.
 
@@ -141,7 +158,19 @@ class OlympicsPolicy(nn.Module):
         self.enc1 = nn.Linear(IN_DIM, enc[0])
         self.enc2 = nn.Linear(enc[0], enc[1])
         self.gru = GRUCell(enc[1], hidden)
-        self.head1 = nn.Linear(enc[1] + hidden, head[0])
+        # PER-EVENT first head. Measured at 44M steps on a four-event pool: the shared head
+        # cannot hold "run 100 m" and "stop at the 15 m board" at once. Every event converged on
+        # 13-15 m -- optimal for long_jump and triple_jump, and it cost sprint_100 58.2 m -> 13.1 m
+        # WHILE IT WAS BEING TRAINED. That is interference, not forgetting, and it lives in the
+        # layers that pick a behaviour rather than in the ones that produce a gait. So enc1/enc2
+        # and the GRU stay shared -- all six events are the same locomotion problem and splitting
+        # them would divide the data for the skill that needs it most -- and only this layer forks.
+        #
+        # Laid out as one wide Gemm sliced by the latched one-hot rather than N_EVENT separate
+        # Linears: the graph stays Gemm/Reshape/Mul/ReduceSum with every shape static, which is
+        # what the player's load-time shape check needs (see GRUCell above).
+        self.head_dim = head[0]
+        self.head1 = nn.Linear(enc[1] + hidden, N_EVENT * head[0])
         self.head2 = nn.Linear(head[0], head[1])
         self.head3 = nn.Linear(head[1], ACT_DIM)
 
@@ -218,7 +247,10 @@ class OlympicsPolicy(nn.Module):
         enc = F.elu(self.enc2(F.elu(self.enc1(z))))
 
         h_new = self.gru(enc, h)
-        g = F.elu(self.head1(torch.cat([enc, h_new], dim=1)))
+        # `event` is exactly one-hot (see _classify), so this selects one event's head rather
+        # than mixing them; the other slices get a zero weight and no gradient.
+        g = self.head1(torch.cat([enc, h_new], dim=1)).view(-1, N_EVENT, self.head_dim)
+        g = F.elu((g * event.unsqueeze(-1)).sum(dim=1))
         g = F.elu(self.head2(g))
         # Bounded AT the env clip: smooth, cannot rail, cannot produce NaN or inf.
         action = ACTION_ENV_CLIP * torch.tanh(self.head3(g) / ACTION_ENV_CLIP)

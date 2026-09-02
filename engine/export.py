@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 from engine.contract import ACT_DIM, OBS_DIM, OPSET, STATE_DIM, check_submission
-from engine.model import OlympicsPolicy
+from engine.model import OlympicsPolicy, expand_head1
 
 
 def export(policy: OlympicsPolicy, out: pathlib.Path) -> None:
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     model = OlympicsPolicy()
     if args.ckpt:
-        model.load_state_dict(torch.load(args.ckpt, map_location="cpu"))
+        model.load_state_dict(expand_head1(torch.load(args.ckpt, map_location="cpu")))
         print(f"loaded {args.ckpt}")
 
     out = pathlib.Path(args.out)
