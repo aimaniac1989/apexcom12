@@ -190,7 +190,7 @@ smallest one on the board.
 
 `hurdles_100` stays out of the curriculum: it needs a 0.55 m barrier cleared at 12 m and the
 observation barely sees it (`engine/README.md`). `high_jump` goes back in — the duck is worth
-optimising deliberately, and `w_apex` has still never run.
+optimising deliberately.
 
 ## Changes and why
 
@@ -200,7 +200,10 @@ optimising deliberately, and `w_apex` has still never run.
 | `f684e44` | `w_apex` gives high_jump a pre-crossing gradient; `--events` curriculum subset |
 | `894fbde` | log route progress + terminal-reason histogram; fix the resumed-run throughput figure |
 | `61f9139` | per-event `head1`, sliced by the latched one-hot; `expand_head1` checkpoint migration |
-| (this) | `--freeze-trunk`; `w_apex` to 0 |
+| `5c6b3b0` | `--freeze-trunk`; `w_apex` to 0 |
+| `078c4ca` | per-event breakdown of prog / dist / fell on a third log line |
+| `6ebc001` | `w_smooth` 0.004 -> 0.0002, `w_effort` 0.0008 -> 0.0001, from the rival analysis |
+| `966f430` | `tools/action_stats.py`, to price the shaping against a measured gait |
 
 **`w_apex` is off, measured.** Over ~6M `high_jump` steps it never produced one clearance, and the
 rise it buys near the bar converts clean ducks into strikes — `bar_hit` records no clearance and so
@@ -312,7 +315,7 @@ Host vps
 
 ## Open items
 
-- **`std` has not moved in 449 updates.** It sits at exactly `--init-std` 0.25. Not a wiring bug —
+- **`std` has not moved in ~1,550 updates / 110M+ steps.** It sits at exactly `--init-std` 0.25. Not a wiring bug —
   `log_std` is in the gradient graph — but a stalemate between the `--ent 1e-3` bonus pushing it up
   and the policy gradient pushing it down, with Adam normalising both. The policy therefore injects
   0.25 rad of noise into every joint target forever and never sharpens, which caps gait speed and
@@ -320,13 +323,17 @@ Host vps
   to generalise to unseen routes.
 - **`out_of_bounds` fouls returned at 5-9 per 200** once the gait reached ~58 m. On a `sprint_100`
   pool the only reachable foul reasons are `out_of_bounds` and `physics_glitch`, so the faster gait
-  is drifting out of the 1.5 m lane. `w_lateral` 0.25 against `w_progress` 1200 is the ratio to
-  revisit if it worsens.
+  is drifting out of the lane (`TRACK_HALF_W` 0.85, so 1.7 m wide). `w_lateral` 0.25 against
+  `w_progress` 1200 is the ratio to revisit if it worsens.
 - **`kl` reached 0.057 against `--target-kl` 0.03** late in the sprint run, with value loss back up
   near 95. The epoch loop early-stops the moment KL crosses target, so updates are being cut short.
   If it persists across an EVAL rather than being one noisy update, lower `--lr` or raise
   `--minibatch`.
-- **`w_apex` has never been exercised by a real run.** Its gating and delta arithmetic are unit
-  tested, but `high_jump` has been outside every curriculum since it landed.
+- **The smoothness hypothesis is still untested.** `6ebc001` has failed to reach the training
+  box three times across ~110M steps, and every run in this log ran at `w_smooth` 0.004. Five
+  configurations — different pools, inits, `w_apex` on and off, shared head and forked — all
+  converge on ~12 m and ~90% falls. Verify `RewardConfig().w_smooth` on the box before every
+  launch; `tools/action_stats.py` against `original/code_submission_0830.onnx` settles whether
+  the tax is what pins the attractor there.
 - **Neither `hurdles_100` nor `high_jump` has a path to non-trivial score yet.** Both are blocked on
   capability the policy does not have, and together they are a third of the meet mean.
