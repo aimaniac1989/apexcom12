@@ -149,6 +149,27 @@ class RewardConfig:
                                   # drift away from what actually wins the round
 
 
+def config_from(spec: str = "") -> RewardConfig:
+    """`RewardConfig` with `k=v,k=v` overrides applied, for tuning without editing this file.
+
+    Every reward experiment in this project so far has meant an edit, a commit, a push and a pull
+    -- and the pull failed three separate times, so ~110M steps were spent measuring weights
+    nobody intended to test. A weight that can be set on the command line and echoed into the log
+    cannot silently be the wrong one.
+    """
+    cfg = RewardConfig()
+    for item in (p.strip() for p in spec.split(",")):
+        if not item:
+            continue
+        key, _, value = item.partition("=")
+        key = key.strip()
+        if not hasattr(cfg, key):
+            fields = ", ".join(sorted(vars(cfg)))
+            raise ValueError(f"unknown reward weight {key!r}; choose from: {fields}")
+        setattr(cfg, key, float(value))
+    return cfg
+
+
 @dataclass
 class EpisodeTracker:
     """Per-episode bookkeeping for terms that are deltas rather than levels."""

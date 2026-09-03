@@ -179,7 +179,7 @@ def train(args) -> None:
 
     from engine.model import (ACT_DIM, H_DIM, H_HI, H_LO, IN_DIM, OBS_DIM, STATE_DIM,
                               OlympicsPolicy, expand_head1)
-    from engine.rewards import RewardConfig
+    from engine.rewards import RewardConfig, config_from
     from engine.venv import VecOlympics
 
     Critic, gae = _build(IN_DIM, H_DIM)
@@ -219,8 +219,14 @@ def train(args) -> None:
          {"params": [log_std], "lr": args.lr}], eps=1e-5)
 
     events = tuple(e.strip() for e in args.events.split(",") if e.strip()) or None
+    cfg = config_from(args.reward)
+    # Echoed every run, so the log is a record of the weights that were actually in effect rather
+    # than the ones the source tree happened to hold when someone read it later.
+    base = RewardConfig()
+    diff = {k: v for k, v in vars(cfg).items() if v != getattr(base, k)}
+    print(f"reward: {diff if diff else 'defaults'}")
     venv = VecOlympics(n_workers=args.workers, seed=args.seed,
-                       cfg=RewardConfig(), step_cap=args.step_cap, events=events)
+                       cfg=cfg, step_cap=args.step_cap, events=events)
     if events:
         # The eval hook still scores the FULL meet, so raw_score stays comparable across runs.
         print(f"curriculum: training {sorted(set(venv.events))} only")
@@ -433,6 +439,9 @@ if __name__ == "__main__":
     ap.add_argument("--init", default="engine/runs/warm.pt")
     ap.add_argument("--out", default="engine/runs/ppo.pt")
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--reward", default="",
+                    help="comma-separated RewardConfig overrides, e.g. "
+                         "w_progress=4000,r_fell=-10,w_smooth=0.00005")
     ap.add_argument("--freeze-trunk", type=int, default=0,
                     help="hold enc1/enc2/gru and train only the per-event heads, so a "
                          "multi-event pool cannot degrade the gait it starts from")
